@@ -1,0 +1,585 @@
+Online Alışveriş Sepet Sistemi
+E-ticaret sitesinde sepet yönetimi ve ödeme sistemini adım adım açıklayanKullanıcı girişi, ürün ekleme, stok kontrolu,
+indirim kodu, kargo hesaplama ve ödeme aşamalarını içeren bi algoritma sistemi için adım adım pseudocode oluştur
+
+// --- Oturum & Kullanıcı Yönetimi ---
+FUNCTION Login(email, password):
+    user <- GetUserByEmail(email)
+    IF user IS NULL:
+        RETURN Error("Kullanıcı bulunamadı")
+    IF VerifyPassword(password, user.passwordHash) IS FALSE:
+        RETURN Error("Hatalı parola")
+    token <- CreateSessionToken(user.id)
+    RETURN Success({ userId: user.id, token: token })
+
+FUNCTION Logout(token):
+    InvalidateSessionToken(token)
+    RETURN Success("Oturum kapatıldı")
+
+FUNCTION EnsureAuthenticated(token):
+    session <- GetSession(token)
+    IF session IS NULL OR session.isExpired:
+        RETURN Error("Yetkisiz veya oturum süresi doldu")
+    RETURN Success(session.userId)
+
+// --- Ürün İşlemleri ---
+FUNCTION GetProduct(productId):
+    RETURN DB.Products.FindById(productId)
+
+FUNCTION CheckStock(productId, requestedQuantity):
+    product <- GetProduct(productId)
+    IF product IS NULL:
+        RETURN Error("Ürün bulunamadı")
+    IF product.stockQuantity >= requestedQuantity:
+        RETURN Success(TRUE)
+    ELSE
+        RETURN Success(FALSE)
+
+// --- Sepet Yönetimi ---
+FUNCTION GetCartForUser(userId):
+    cart <- DB.Carts.FindActiveByUserId(userId)
+    IF cart IS NULL:
+        cart <- CreateEmptyCart(userId)
+    RETURN cart
+
+FUNCTION AddToCart(userId, productId, quantity):
+    product <- GetProduct(productId)
+    IF product IS NULL:
+        RETURN Error("Ürün yok")
+    IF quantity <= 0:
+        RETURN Error("Miktar geçersiz")
+    stockOk <- CheckStock(productId, quantity)
+    IF stockOk IS FALSE:
+        RETURN Error("Yeterli stok yok")
+    cart <- GetCartForUser(userId)
+    item <- cart.items.FindByProductId(productId)
+    IF item IS NULL:
+        cart.items.Append({ productId: productId, quantity: quantity, unitPrice: product.price })
+    ELSE:
+        newQty <- item.quantity + quantity
+        IF product.stockQuantity < newQty:
+            RETURN Error("Toplam istenen miktar stoktan fazla")
+        item.quantity <- newQty
+    RecalculateCartTotals(cart)
+    SaveCart(cart)
+    RETURN Success(cart)
+
+FUNCTION UpdateCartItem(userId, productId, newQuantity):
+    cart <- GetCartForUser(userId)
+    item <- cart.items.FindByProductId(productId)
+    IF item IS NULL:
+        RETURN Error("Ürün sepette değil")
+    IF newQuantity <= 0:
+        RemoveCartItem(userId, productId)
+        RETURN Success("Ürün kaldırıldı")
+    stockOk <- CheckStock(productId, newQuantity)
+    IF stockOk IS FALSE:
+        RETURN Error("Yeterli stok yok")
+    item.quantity <- newQuantity
+    RecalculateCartTotals(cart)
+    SaveCart(cart)
+    RETURN Success(cart)
+
+FUNCTION RemoveCartItem(userId, productId):
+    cart <- GetCartForUser(userId)
+    cart.items.RemoveByProductId(productId)
+    RecalculateCartTotals(cart)
+    SaveCart(cart)
+    RETURN Success(cart)
+
+// --- Kupon / İndirim ---
+FUNCTION ValidateCoupon(code, cart):
+    coupon <- DB.Coupons.FindByCode(code)
+    IF coupon IS NULL:
+        RETURN Error("Kupon bulunamadı")
+    IF coupon.expiresAt IS NOT NULL AND Now() > coupon.expiresAt:
+        RETURN Error("Kupon süresi dolmuş")
+    IF coupon.usageLimit IS NOT NULL AND coupon.usedCount >= coupon.usageLimit:
+        RETURN Error("Kupon kullanım limiti dolmuş")
+    IF cart.subtotal < coupon.minCartValue:
+        RETURN Error("Sepet kupon şartlarını sağlamıyor")
+    RETURN Success(coupon)
+
+FUNCTION ApplyCouponToCart(userId, code):
+    cart <- GetCartForUser(userId)
+    validation <- ValidateCoupon(code, cart)
+    IF validation IS Error:
+        RETURN validation
+    coupon <- validation.value
+    // Hesaplama
+    IF coupon.type == "percent":
+        discountAmount <- Round(cart.subtotal * coupon.value / 100, 2)
+    ELSE:
+        discountAmount <- Min(coupon.value, cart.subtotal)
+    cart.couponsApplied.Append({ code: coupon.code, discountAmount: discountAmount })
+    RecalculateCartTotals(cart)
+    SaveCart(cart)
+    RETURN Success(cart)
+
+// --- Kargo Hesaplama ---
+FUNCTION EstimateShipping(cart, shippingAddress, shippingMethodId):
+    // Basit örnek: ağırlığa göre hesaplama
+    totalWeight <- 0
+    FOR item IN cart.items:
+        product <- GetProduct(item.productId)
+        totalWeight <- totalWeight + (product.weight * item.quantity)
+    shippingMethod <- DB.ShippingMethods.FindById(shippingMethodId)
+    IF shippingMethod IS NULL:
+        RETURN Error("Kargo yöntemi bulunamadı")
+    shippingCost <- shippingMethod.basePrice + (shippingMethod.perKgPrice * totalWeight)
+    // Opsiyonel: uzaklık hesaplama, ülke/şehir vergileri vb.
+    RETURN Success({ shippingCost: Round(shippingCost,2), deliveryDays: shippingMethod.deliveryDays })
+
+FUNCTION SelectShippingOption(userId, shippingAddress, shippingMethodId):
+    cart <- GetCartForUser(userId)
+    shipping <- EstimateShipping(cart, shippingAddress, shippingMethodId)
+    IF shipping IS Error:
+        RETURN shipping
+    cart.shippingAddress <- shippingAddress
+    cart.shippingMethod <- shippingMethodId
+    cart.totals.shippingCost <- shipping.value.shippingCost
+    RecalculateCartTotals(cart)
+    SaveCart(cart)
+    RETURN Success(cart)
+
+// --- Ödeme ---
+FUNCTION CalculateTaxes(cart, shippingAddress):
+    // Basit: sabit vergi oranı veya adres tabanlı
+    taxRate <- LookupTaxRateByAddress(shippingAddress) // örn. %18
+    taxes <- Round((cart.subtotal - cart.totalDiscount) * taxRate / 100, 2)
+    RETURN taxes
+
+FUNCTION RecalculateCartTotals(cart):
+    cart.subtotal <- 0
+    cart.totalDiscount <- 0
+    FOR item IN cart.items:
+        cart.subtotal <- cart.subtotal + (item.unitPrice * item.quantity)
+    FOR c IN cart.couponsApplied:
+        cart.totalDiscount <- cart.totalDiscount + c.discountAmount
+    cart.taxes <- CalculateTaxes(cart, cart.shippingAddress) IF cart.shippingAddress IS NOT NULL ELSE 0
+    cart.totals.total <- cart.subtotal - cart.totalDiscount + cart.totals.shippingCost + cart.taxes
+    // Güvenlik: toplam negatif olmamalı
+    IF cart.totals.total < 0:
+        cart.totals.total <- 0
+    RETURN
+
+FUNCTION CreatePaymentIntent(userId, cart, paymentMethodId):
+    // Ödeme sağlayıcı (ör: pay, stripe) ile iletişim
+    providerResponse <- PaymentGateway.CreatePayment(amount=cart.totals.total, currency="TRY", paymentMethod=paymentMethodId, metadata={ userId, cartId: cart.id })
+    IF providerResponse.failed:
+        RETURN Error("Ödeme başlatılamadı: " + providerResponse.errorMessage)
+    RETURN Success(providerResponse.paymentIntentId)
+
+// --- Sipariş Oluşturma ve Stok Güncelleme ---
+FUNCTION PlaceOrder(userId, paymentMethodId):
+    // 1. Kimlik doğrula
+    cart <- GetCartForUser(userId)
+    IF cart.items.IsEmpty():
+        RETURN Error("Sepet boş")
+    // 2. Tekrar stok doğrulaması (yarış koşullarını önlemek için)
+    FOR item IN cart.items:
+        product <- GetProduct(item.productId)
+        IF product.stockQuantity < item.quantity:
+            RETURN Error("Stokta yetersiz ürün: " + product.name)
+    // 3. Ödeme başlat
+    paymentIntent <- CreatePaymentIntent(userId, cart, paymentMethodId)
+    IF paymentIntent IS Error:
+        RETURN paymentIntent
+    // 4. Ödeme onayı (synchronous veya webhook tabanlı)
+    paymentResult <- PaymentGateway.ConfirmPayment(paymentIntent.value)
+    IF paymentResult.status != "succeeded":
+        // opsiyonel: bekletme/rezervasyon yerine ödeme doğrulamasını webhook ile bekle
+        RETURN Error("Ödeme başarısız: " + paymentResult.message)
+    // 5. Sipariş kaydet ve stok azalt
+    BEGIN TRANSACTION
+        order <- CreateOrderRecord(userId, cart, paymentResult)
+        FOR item IN cart.items:
+            DecreaseProductStock(item.productId, item.quantity)
+        // Kupon kullanım sayısını arttır
+        FOR applied IN cart.couponsApplied:
+            coupon <- DB.Coupons.FindByCode(applied.code)
+            IF coupon IS NOT NULL:
+                coupon.usedCount <- coupon.usedCount + 1
+                DB.Coupons.Update(coupon)
+        // Sepeti temizle veya arşivle
+        ArchiveOrClearCart(cart)
+    COMMIT TRANSACTION
+    // 6. Bildirim gönder
+    SendOrderConfirmationEmail(userId, order.id)
+    RETURN Success(order)
+
+// --- Yardımcı Fonksiyonlar ---
+FUNCTION DecreaseProductStock(productId, qty):
+    // Atomik/transactional işlem olmalı
+    product <- GetProduct(productId)
+    IF product.stockQuantity >= qty:
+        product.stockQuantity <- product.stockQuantity - qty
+        DB.Products.Update(product)
+        RETURN Success()
+    ELSE:
+        RETURN Error("Stok düşülemedi")
+
+FUNCTION CreateOrderRecord(userId, cart, paymentResult):
+    order <- {
+        id: NewOrderId(),
+        userId: userId,
+        items: DeepCopy(cart.items),
+        shipping: { address: cart.shippingAddress, method: cart.shippingMethod, cost: cart.totals.shippingCost },
+        totals: cart.totals,
+        paymentStatus: "paid",
+        paymentDetails: paymentResult,
+        orderStatus: "processing",
+        createdAt: Now()
+    }
+    DB.Orders.Insert(order)
+    RETURN order
+
+FUNCTION RecalculateAndShowCart(userId):
+    cart <- GetCartForUser(userId)
+    RecalculateCartTotals(cart)
+    RETURN cart
+
+
+Pseudocodu turkçe Ile yaz
+
+BAŞLA
+
+// --- 1. Kullanıcı Girişi ---
+1. Kullanıcıdan e-posta ve parola al
+2. Eğer e-posta sistemde kayıtlı değilse
+       Yazdır("Kullanıcı bulunamadı")
+       Bitir
+3. Eğer parola yanlışsa
+       Yazdır("Hatalı parola")
+       Bitir
+4. Oturum başlat
+       kullanıcı_id <- GirişYapanKullanıcıID()
+
+// --- 2. Ürün Seçme ve Stok Kontrolü ---
+5. Kullanıcıya ürün listesi göster
+6. Kullanıcı ürün_id ve miktar seçer
+7. StokKontrol(ürün_id, miktar)
+       Eğer stok yetersizse
+           Yazdır("Yeterli stok yok")
+           Bitir
+       Değilse devam et
+
+// --- 3. Ürünü Sepete Ekleme ---
+8. Eğer seçilen ürün sepette yoksa
+       SepeteEkle(kullanıcı_id, ürün_id, miktar)
+   Değilse
+       Sepetteki miktarı güncelle
+9. Yazdır("Ürün sepete eklendi")
+
+// --- 4. İndirim Kodu Uygulama ---
+10. Kullanıcıya "İndirim kodun var mı?" diye sor
+11. Eğer kullanıcı kod girmek istiyorsa
+        kod <- Kullanıcıdan kod al
+        Eğer KuponGeçerliMi(kod) ise
+              İndirimiHesapla(kod)
+              Yazdır("İndirim uygulandı")
+        Değilse
+              Yazdır("Kod geçersiz veya süresi dolmuş")
+
+// --- 5. Kargo Hesaplama ---
+12. Kullanıcıdan teslimat adresi al
+13. KargoYöntemleriniListele()
+14. Kullanıcı bir kargo yöntemi seçer
+15. KargoTutarı <- KargoHesapla(sepet, seçilen_kargo)
+16. Yazdır("Kargo ücreti: ", KargoTutarı)
+
+// --- 6. Sepet Toplamını Hesaplama ---
+17. AraToplam <- SepettekiÜrünFiyatlarınıTopla()
+18. Toplamİndirim <- Hesaplananİndirim()
+19. Vergi <- (AraToplam - Toplamİndirim) * 0.18
+20. GenelToplam <- AraToplam - Toplamİndirim + KargoTutarı + Vergi
+21. Yazdır("Toplam ödenecek tutar: ", GenelToplam)
+
+// --- 7. Ödeme Aşaması ---
+22. Kullanıcıdan ödeme yöntemi seçmesini iste
+       (Kredi kartı, havale vb.)
+23. ÖdemeSonucu <- ÖdemeYap(kullanıcı_id, GenelToplam)
+24. Eğer ÖdemeSonucu == "Başarılı" ise
+         Yazdır("Ödeme başarılı")
+     Değilse
+         Yazdır("Ödeme başarısız, tekrar deneyin")
+         Bitir
+
+// --- 8. Sipariş Oluşturma ve Stok Güncelleme ---
+25. SiparişOluştur(kullanıcı_id, sepet, adres, GenelToplam)
+26. Her ürün için
+        StokAzalt(ürün_id, miktar)
+27. SepetiTemizle(kullanıcı_id)
+28. Yazdır("Sipariş oluşturuldu. Teşekkür ederiz!")
+
+// --- 9. Bildirim ve Onay ---
+29. Kullanıcıya e-posta ile sipariş özeti gönder
+30. Sipariş durumunu "Hazırlanıyor" olarak işaretle
+
+BİTİR
+
+
+<- kullandiğin yerde = kullan ve bana sadece pseudocodun tekrar gönder
+
+
+BAŞLA
+
+// --- 1. Kullanıcı Girişi ---
+1. Kullanıcıdan e-posta ve parola al
+2. Eğer e-posta sistemde kayıtlı değilse
+       Yazdır("Kullanıcı bulunamadı")
+       Bitir
+3. Eğer parola yanlışsa
+       Yazdır("Hatalı parola")
+       Bitir
+4. Oturum başlat
+       kullanıcı_id = GirişYapanKullanıcıID()
+
+// --- 2. Ürün Seçme ve Stok Kontrolü ---
+5. Kullanıcıya ürün listesi göster
+6. Kullanıcı ürün_id ve miktar seçer
+7. StokKontrol(ürün_id, miktar)
+       Eğer stok yetersizse
+           Yazdır("Yeterli stok yok")
+           Bitir
+       Değilse devam et
+
+// --- 3. Ürünü Sepete Ekleme ---
+8. Eğer seçilen ürün sepette yoksa
+       SepeteEkle(kullanıcı_id, ürün_id, miktar)
+   Değilse
+       Sepetteki miktarı güncelle
+9. Yazdır("Ürün sepete eklendi")
+
+// --- 4. İndirim Kodu Uygulama ---
+10. Kullanıcıya "İndirim kodun var mı?" diye sor
+11. Eğer kullanıcı kod girmek istiyorsa
+        kod = Kullanıcıdan kod al
+        Eğer KuponGeçerliMi(kod) ise
+              İndirimiHesapla(kod)
+              Yazdır("İndirim uygulandı")
+        Değilse
+              Yazdır("Kod geçersiz veya süresi dolmuş")
+
+// --- 5. Kargo Hesaplama ---
+12. Kullanıcıdan teslimat adresi al
+13. KargoYöntemleriniListele()
+14. Kullanıcı bir kargo yöntemi seçer
+15. KargoTutarı = KargoHesapla(sepet, seçilen_kargo)
+16. Yazdır("Kargo ücreti: ", KargoTutarı)
+
+// --- 6. Sepet Toplamını Hesaplama ---
+17. AraToplam = SepettekiÜrünFiyatlarınıTopla()
+18. Toplamİndirim = Hesaplananİndirim()
+19. Vergi = (AraToplam - Toplamİndirim) * 0.18
+20. GenelToplam = AraToplam - Toplamİndirim + KargoTutarı + Vergi
+21. Yazdır("Toplam ödenecek tutar: ", GenelToplam)
+
+// --- 7. Ödeme Aşaması ---
+22. Kullanıcıdan ödeme yöntemi seçmesini iste
+       (Kredi kartı, havale vb.)
+23. ÖdemeSonucu = ÖdemeYap(kullanıcı_id, GenelToplam)
+24. Eğer ÖdemeSonucu == "Başarılı" ise
+         Yazdır("Ödeme başarılı")
+     Değilse
+         Yazdır("Ödeme başarısız, tekrar deneyin")
+         Bitir
+
+// --- 8. Sipariş Oluşturma ve Stok Güncelleme ---
+25. SiparişOluştur(kullanıcı_id, sepet, adres, GenelToplam)
+26. Her ürün için
+        StokAzalt(ürün_id, miktar)
+27. SepetiTemizle(kullanıcı_id)
+28. Yazdır("Sipariş oluşturuldu. Teşekkür ederiz!")
+
+// --- 9. Bildirim ve Onay ---
+29. Kullanıcıya e-posta ile sipariş özeti gönder
+30. Sipariş durumunu "Hazırlanıyor" olarak işaretle
+
+BİTİR
+
+
+Kullanıcı bulunbadiysa yeni hisab açma seçenek olsun ve onude ekleyerek tekrar pseudocodunu oluştur. = Doğru kullanmayı unutma
+
+
+BAŞLA
+
+// --- 1. Kullanıcı Girişi veya Yeni Hesap Açma ---
+1. Kullanıcıdan e-posta ve parola al
+2. Eğer e-posta sistemde kayıtlı değilse
+       Yazdır("Kullanıcı bulunamadı")
+       Yazdır("Yeni hesap açmak ister misiniz? (E/H)")
+       cevap = Kullanıcıdan giriş al
+       Eğer cevap == "E" ise
+             isim = Kullanıcıdan isim al
+             soyisim = Kullanıcıdan soyisim al
+             yeni_parola = Kullanıcıdan parola al
+             YeniHesapOluştur(isim, soyisim, e-posta, yeni_parola)
+             Yazdır("Hesabınız oluşturuldu, giriş yapabilirsiniz.")
+             kullanıcı_id = GirişYapanKullanıcıID()
+       Değilse
+             Yazdır("Giriş yapılmadı, işlem sonlandırıldı.")
+             Bitir
+3. Eğer parola yanlışsa
+       Yazdır("Hatalı parola")
+       Bitir
+4. Oturum başlat
+       kullanıcı_id = GirişYapanKullanıcıID()
+
+// --- 2. Ürün Seçme ve Stok Kontrolü ---
+5. Kullanıcıya ürün listesi göster
+6. Kullanıcı ürün_id ve miktar seçer
+7. StokKontrol(ürün_id, miktar)
+       Eğer stok yetersizse
+           Yazdır("Yeterli stok yok")
+           Bitir
+       Değilse devam et
+
+// --- 3. Ürünü Sepete Ekleme ---
+8. Eğer seçilen ürün sepette yoksa
+       SepeteEkle(kullanıcı_id, ürün_id, miktar)
+   Değilse
+       Sepetteki miktarı güncelle
+9. Yazdır("Ürün sepete eklendi")
+
+// --- 4. İndirim Kodu Uygulama ---
+10. Kullanıcıya "İndirim kodun var mı?" diye sor
+11. Eğer kullanıcı kod girmek istiyorsa
+        kod = Kullanıcıdan kod al
+        Eğer KuponGeçerliMi(kod) ise
+              İndirimiHesapla(kod)
+              Yazdır("İndirim uygulandı")
+        Değilse
+              Yazdır("Kod geçersiz veya süresi dolmuş")
+
+// --- 5. Kargo Hesaplama ---
+12. Kullanıcıdan teslimat adresi al
+13. KargoYöntemleriniListele()
+14. Kullanıcı bir kargo yöntemi seçer
+15. KargoTutarı = KargoHesapla(sepet, seçilen_kargo)
+16. Yazdır("Kargo ücreti: ", KargoTutarı)
+
+// --- 6. Sepet Toplamını Hesaplama ---
+17. AraToplam = SepettekiÜrünFiyatlarınıTopla()
+18. Toplamİndirim = Hesaplananİndirim()
+19. Vergi = (AraToplam - Toplamİndirim) * 0.18
+20. GenelToplam = AraToplam - Toplamİndirim + KargoTutarı + Vergi
+21. Yazdır("Toplam ödenecek tutar: ", GenelToplam)
+
+// --- 7. Ödeme Aşaması ---
+22. Kullanıcıdan ödeme yöntemi seçmesini iste
+       (Kredi kartı, havale vb.)
+23. ÖdemeSonucu = ÖdemeYap(kullanıcı_id, GenelToplam)
+24. Eğer ÖdemeSonucu == "Başarılı" ise
+         Yazdır("Ödeme başarılı")
+     Değilse
+         Yazdır("Ödeme başarısız, tekrar deneyin")
+         Bitir
+
+// --- 8. Sipariş Oluşturma ve Stok Güncelleme ---
+25. SiparişOluştur(kullanıcı_id, sepet, adres, GenelToplam)
+26. Her ürün için
+        StokAzalt(ürün_id, miktar)
+27. SepetiTemizle(kullanıcı_id)
+28. Yazdır("Sipariş oluşturuldu. Teşekkür ederiz!")
+
+// --- 9. Bildirim ve Onay ---
+29. Kullanıcıya e-posta ile sipariş özeti gönder
+30. Sipariş durumunu "Hazırlanıyor" olarak işaretle
+
+BİTİR
+
+
+Bu pseudocodu DOT diline çevir
+
+
+digraph Online_Alisveris_Sepeti {
+    rankdir=TB;
+    node [shape=rectangle, fontname="Arial", fontsize=11, style=rounded];
+
+    start [label="BAŞLA", shape=circle, style=filled, fillcolor=lightgreen];
+
+    // Kullanıcı girişi veya yeni hesap
+    input_login [label="Kullanıcıdan e-posta ve parola al"];
+    check_user [label="E-posta sistemde kayıtlı mı?"];
+    user_not_found [label="Kullanıcı bulunamadı\nYeni hesap açmak ister misiniz? (E/H)", shape=diamond];
+    create_account [label="YeniHesapOluştur(isim, soyisim, e-posta, parola)\nHesap oluşturuldu"];
+    no_account [label="Giriş yapılmadı, işlem sonlandırıldı"];
+    wrong_pass [label="Parola yanlış\ntekrer deneyin"];
+    login_success [label="Oturum başlat\nkullanıcı_id = GirişYapanKullanıcıID()"];
+
+    // Ürün seçme
+    show_products [label="Ürün listesi göster"];
+    select_product [label="Kullanıcı ürün_id ve miktar seçer"];
+    check_stock [label="Stok yeterli mi?", shape=diamond];
+    no_stock [label="Yeterli stok yok\nİşlem sonlandırıldı"];
+    add_to_cart [label="SepeteEkle veya miktarı güncelle"];
+    product_added [label="Ürün sepete eklendi"];
+
+    // İndirim kodu
+    ask_coupon [label="İndirim kodun var mı?", shape=diamond];
+    enter_coupon [label="Kullanıcı kod girer"];
+    coupon_valid [label="Kupon geçerli mi?", shape=diamond];
+    apply_discount [label="İndirimiHesapla(kod)\nİndirim uygulandı"];
+    invalid_coupon [label="Kod geçersiz veya süresi dolmuş"];
+
+    // Kargo hesaplama
+    enter_address [label="Teslimat adresi al"];
+    list_shipping [label="Kargo yöntemlerini listele"];
+    select_shipping [label="Kullanıcı kargo yöntemi seçer"];
+    calc_shipping [label="KargoTutarı = KargoHesapla(sepet, yöntem)\nKargo ücreti yazdır"];
+
+    // Toplam hesaplama
+    calc_total [label="AraToplam, İndirim, Vergi, GenelToplam hesapla"];
+    show_total [label="Toplam ödenecek tutar yazdır"];
+
+    // Ödeme
+    select_payment [label="Ödeme yöntemi seç"];
+    payment_result [label="ÖdemeSonucu = ÖdemeYap()", shape=diamond];
+    payment_failed [label="Ödeme başarısız\nİşlem sonlandırıldı"];
+    payment_success [label="Ödeme başarılı"];
+
+    // Sipariş oluşturma
+    create_order [label="SiparişOluştur()\nStokAzalt()\nSepetiTemizle()"];
+    order_done [label="Sipariş oluşturuldu\nTeşekkür ederiz!"];
+
+    // Bildirim
+    send_email [label="E-posta ile sipariş özeti gönder"];
+    mark_status [label="Sipariş durumunu 'Hazırlanıyor' yap"];
+
+    end [label="BİTİR", shape=doublecircle, style=filled, fillcolor=lightblue];
+
+    // --- Akış bağlantıları ---
+    start -> input_login -> check_user;
+    check_user -> user_not_found [label="Hayır"];
+    check_user -> wrong_pass [label="Evet, ama parola yanlış"];
+    check_user -> login_success [label="Evet ve parola doğru"];
+
+    user_not_found -> create_account [label="E"];
+    user_not_found -> no_account [label="H"];
+    create_account -> login_success;
+    wrong_pass -> end;
+    no_account -> end;
+
+    login_success -> show_products -> select_product -> check_stock;
+    check_stock -> no_stock [label="Hayır"];
+    check_stock -> add_to_cart [label="Evet"];
+    no_stock -> end;
+    add_to_cart -> product_added -> ask_coupon;
+
+    ask_coupon -> enter_coupon [label="Evet"];
+    ask_coupon -> enter_address [label="Hayır"];
+    enter_coupon -> coupon_valid;
+    coupon_valid -> apply_discount [label="Evet"];
+    coupon_valid -> invalid_coupon [label="Hayır"];
+    apply_discount -> enter_address;
+    invalid_coupon -> enter_address;
+
+    enter_address -> list_shipping -> select_shipping -> calc_shipping -> calc_total -> show_total -> select_payment -> payment_result;
+
+    payment_result -> payment_success [label="Başarılı"];
+    payment_result -> payment_failed [label="Başarısız"];
+    payment_failed -> end;
+
+    payment_success -> create_order -> order_done -> send_email -> mark_status -> end;
+}
