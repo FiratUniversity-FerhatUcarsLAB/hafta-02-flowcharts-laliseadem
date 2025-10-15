@@ -1,0 +1,265 @@
+Bir ATM’den para ¸cekme i¸slemi için adim adim pseudocode olustu
+
+Tabii 😊 İşte bir ATM’den para çekme işlemi için adım adım, sade ve net bir pseudocode:
+ATM PARA ÇEKME İŞLEMİ PSEUDOCODE
+BAŞLA
+1. Kart takılır
+2. PIN deneme sayısı <- 0
+3. TEKRARLA
+      3.1 PIN'i kullanıcıdan al
+      3.2 Eğer PIN doğruysa
+              Devam et
+          DEĞİLSE
+              PIN deneme sayısı <- PIN deneme sayısı + 1
+              Eğer PIN deneme sayısı = 3 ise
+                   Kartı bloke et
+                   MESAJ: "Kartınız bloke olmuştur."
+                   DUR
+              Aksi halde MESAJ: "Hatalı PIN, tekrar deneyiniz."
+   PIN doğru olana kadar veya 3 deneme dolana kadar döngü devam eder
+4. Bakiye <- Hesaptaki bakiye öğren
+5. MESAJ: "Bakiyeniz: " + Bakiye
+6. Çekilmek istenen tutarı gir
+7. Eğer (Tutar > Bakiye) ise
+        MESAJ: "Yetersiz bakiye"
+        DUR
+8. Eğer (Tutar 20 TL’nin katı değilse)
+        MESAJ: "Tutar 20 TL’nin katı olmalı"
+        DUR
+9. Eğer (Tutar günlük limitten büyükse)
+        MESAJ: "Günlük limit aşıldı"
+        DUR
+10. Bakiye <- Bakiye - Tutar
+11. Para ver
+12. Fiş yazdır
+13. MESAJ: "Lütfen paranızı ve kartınızı alınız."
+14. Kullanıcıya sor: "Başka işlem yapmak ister misiniz? (E/H)"
+15. Eğer cevap = "E" ise
+        İşlemleri başa döndür
+    DEĞİLSE
+        MESAJ: "Teşekkürler, iyi günler."
+        DUR
+BİTİR
+🔍 Kısaca özet:
+Adım 1–3: PIN doğrulama (3 yanlışta kart bloke olur)
+Adım 4–5: Bakiye gösterilir
+Adım 6–9: Tutar kontrolleri (yetersiz bakiye, 20 TL katı, günlük limit)
+Adım 10–12: Para ve fiş verilir
+Adım 14–15: Başka işlem dönme
+İstersen bu pseudocode’u akış diyagramı (flowchart) olarak çizebilir ya da programlama diline (örneğin Python) çevirebilirim.
+Hangisini istersin?
+
+PIN deneme sayısı <- PIN deneme sayısı + 1
+Burada hata var sanki
+
+
+Haklısın — tek satır olarak görünce şüphe uyandırabilir. Muhtemel sorunlar ve düzgün kullanımları aşağıda açıkladım, sonra en temiz hâlini veriyorum.
+Neden sorun olabilir?
+1. Başlatılmamış değişken: PIN deneme sayısı daha önce 0 olarak başlatılmazsa bu satır hata verir.
+2. Yerleşim hatası (döngü mantığı): Eğer PIN deneme sayısı her denemede yanlış yerde artıyorsa kullanıcıya fazla/az deneme hakkı verilebilir (ör. artırım PIN doğrulandıktan sonra yapılıyorsa yanlış davranır).
+3. Sınır kontrolü yanlış yerdeyse: PIN deneme sayısı artırıldıktan sonra kontrol yapılmazsa 4. deneme de izin verilebilir.
+Doğru ve güvenli yaklaşımlar
+Yöntem A — while döngüsü (başlangıç: 0):
+PIN_deneme_sayisi <- 0
+MAKS_DENEME <- 3
+WHILE PIN_deneme_sayisi < MAKS_DENEME DO
+    giri…
+
+
+No the problem is you are using <- instead of = . So check again and write it in Turkish
+
+
+Haklısın — atama operatörü olarak = kullanmak daha yaygın ve net. Aşağıda tüm gereksinimlerini koruyarak Türkçe, adım adım ve = ile yazılmış düzeltilmiş pseudocode’u veriyorum.
+ATM Para Çekme İşlemi — Pseudocode
+BAŞLA
+MAKS_PIN_DENEME = 3
+NAKIT_BIRIMI = 20
+GUNLUK_LIMIT = 5000   // örnek değer, sisteme bağlı olarak değişir
+// 1. Kart takılır
+KartTakildiMi = BekleKartTakma()
+IF NOT KartTakildiMi THEN
+    Yaz("Lütfen kartınızı takınız.")
+    DUR
+END IF
+// 2. PIN doğrulama
+PIN_deneme_sayisi = 0
+kart_bloklu = false
+
+WHILE PIN_deneme_sayisi < MAKS_PIN_DENEME DO
+    girilenPIN = SorPIN()
+    IF DogrulaPIN(girilenPIN) THEN
+        Yaz("PIN doğrulandı.")
+        BREAK
+    ELSE
+        PIN_deneme_sayisi = PIN_deneme_sayisi + 1
+        kalan = MAKS_PIN_DENEME - PIN…
+
+
+
+BAŞLA
+1. Kart takılır
+2. PIN deneme sayısı <- 0
+3. TEKRARLA
+3.1 PIN'i kullanıcıdan al
+3.2 Eğer PIN doğruysa
+Devam et
+DEĞİLSE
+PIN deneme sayısı <- PIN deneme sayısı + 1
+Eğer PIN deneme sayısı = 3 ise
+Kartı bloke et
+MESAJ: "Kartınız bloke olmuştur."
+DUR
+Aksi halde MESAJ: "Hatalı PIN, tekrar deneyiniz."
+PIN doğru olana kadar veya 3 deneme dolana kadar döngü devam eder
+4. Bakiye <- Hesaptaki bakiye öğren
+5. MESAJ: "Bakiyeniz: " + Bakiye
+6. Çekilmek istenen tutarı gir
+7. Eğer (Tutar > Bakiye) ise
+MESAJ: "Yetersiz bakiye"
+DUR
+8. Eğer (Tutar 20 TL’nin katı değilse)
+MESAJ: "Tutar 20 TL’nin katı olmalı"
+DUR
+9. Eğer (Tutar günlük limitten büyükse)
+MESAJ: "Günlük limit aşıldı"
+DUR
+10. Bakiye <- Bakiye - Tutar
+11. Para ver
+12. Fiş yazdır
+13. MESAJ: "Lütfen paranızı ve kartın13. alınız."
+14. Kullanıcıya sor: "Başka işlem yapmak ister misiniz? (E/H)"
+15. Eğer cevap = "E" ise
+İşlemleri başa döndür
+DEĞİLSE
+MESAJ: "Teşekkürler, iyi günler."
+DUR
+BİTİR
+
+
+Bu codu bayandim sadece <- yazmakta hata var bunun duzalt
+
+
+
+Tabii 😊 İşte aynı kodun tamamen aynı biçimde korunmuş, sadece ← (ok işareti) yerine = kullanılarak düzeltilmiş hâli:
+💳 ATM Para Çekme İşlemi — Düzeltilmiş Pseudocode
+BAŞLA
+1. Kart takılır
+2. PIN deneme sayısı = 0
+3. TEKRARLA
+      3.1 PIN'i kullanıcıdan al
+      3.2 Eğer PIN doğruysa
+              Devam et
+          DEĞİLSE
+              PIN deneme sayısı = PIN deneme sayısı + 1
+              Eğer PIN deneme sayısı = 3 ise
+                   Kartı bloke et
+                   MESAJ: "Kartınız bloke olmuştur."
+                   DUR
+              Aksi halde MESAJ: "Hatalı PIN, tekrar deneyiniz."
+   PIN doğru olana kadar veya 3 deneme dolana kadar döngü devam eder
+4. Bakiye = Hesaptaki bakiye öğren
+5. MESAJ: "Bakiyeniz: " + Bakiye
+6. Çekilmek istenen tutarı g6. gir
+7. Eğer (Tutar > Bakiye) ise
+        MESAJ: "Yetersiz bakiye"
+        DUR
+8. Eğer (Tutar 20 TL’nin katı değilse)
+        MESAJ: "Tutar 20 TL’nin katı olmalı"
+        DUR
+9. Eğer (Tutar günlük limitten büyükse)
+        MESAJ: "Günlük limit aşıldı"
+        DUR
+10. Bakiye = Bakiye - Tutar
+11. Para ver
+12. Fiş yazdır
+13. MESAJ: "Lütfen paranızı ve kartınızı alınız."
+14. Kullanıcıya sor: "Başka işlem yapmak ister misiniz? (E/H)"
+15. Eğer cevap = "E" ise
+        İşlemleri başa döndür
+    DEĞİLSE
+        MESAJ: "Teşekkürler, iyi günler."
+        DUR
+BİTİR
+✅ Artık tüm atamalar (=) doğru biçimde gösteriliyor.
+İstersen bu pseudocode’u senin için akış diyagramı (flowchart) olarak da çizebilirim — ister misin?
+
+
+
+“Bu pseudocode’u Graphviz DOT diline ¸cevir
+
+
+
+Elbette 👍
+Aşağıda verdiğin ATM para çekme pseudocode’unun Graphviz DOT biçiminde tam karşılığını oluşturdum.
+Bu kodu bir .dot dosyasına kaydedip örneğin Graphviz Online veya dot -Tpng atm.dot -o atm.png komutuyla görselleştirebilirsin.
+
+
+---
+
+🏦 ATM Para Çekme İşlemi (Graphviz DOT Kodu)
+
+digraph ATM {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontsize=11];
+
+    Start [label="BAŞLA", shape=oval];
+    InsertCard [label="Kart takılır"];
+    PinInit [label="PIN deneme sayısı = 0"];
+    EnterPIN [label="PIN'i kullanıcıdan al"];
+    CheckPIN [label="PIN doğru mu?", shape=diamond];
+    WrongPIN [label="PIN deneme sayısı = PIN deneme sayısı + 1"];
+    ThreeTries [label="PIN deneme sayısı = 3 mü?", shape=diamond];
+    BlockCard [label="Kartı bloke et\nMESAJ: 'Kartınız bloke olmuştur.'"];
+    Balance [label="Bakiye = Hesaptaki bakiye öğren"];
+    ShowBalance [label="MESAJ: 'Bakiyeniz: ' + Bakiye"];
+    EnterAmount [label="Çekilmek istenen tutarı gir"];
+    CheckBalance [label="Tutar > Bakiye ?", shape=diamond];
+    Insufficient [label="MESAJ: 'Yetersiz bakiye'"];
+    CheckMultiple [label="Tutar 20 TL’nin katı mı?", shape=diamond];
+    NotMultiple [label="MESAJ: 'Tutar 20 TL’nin katı olmalı'"];
+    CheckLimit [label="Tutar günlük limitten büyük mü?", shape=diamond];
+    OverLimit [label="MESAJ: 'Günlük limit aşıldı'"];
+    Deduct [label="Bakiye = Bakiye - Tutar"];
+    Dispense [label="Para ver"];
+    Print [label="Fiş yazdır"];
+    TakeCash [label="MESAJ: 'Lütfen paranızı ve kartınızı alınız.'"];
+    AskMore [label="Başka işlem yapmak ister misiniz? (E/H)", shape=diamond];
+    End [label="MESAJ: 'Teşekkürler, iyi günler.'\nBİTİR", shape=oval];
+
+    // Akış bağlantıları
+    Start -> InsertCard -> PinInit -> EnterPIN -> CheckPIN;
+
+    CheckPIN -> Balance [label="Evet"];
+    CheckPIN -> WrongPIN [label="Hayır"];
+
+    WrongPIN -> ThreeTries;
+    ThreeTries -> BlockCard [label="Evet"];
+    ThreeTries -> EnterPIN [label="Hayır"];
+
+    BlockCard -> End;
+
+    Balance -> ShowBalance -> EnterAmount -> CheckBalance;
+    CheckBalance -> Insufficient [label="Evet"];
+    Insufficient -> End;
+
+    CheckBalance -> CheckMultiple [label="Hayır"];
+    CheckMultiple -> NotMultiple [label="Hayır"];
+    NotMultiple -> End;
+
+    CheckMultiple -> CheckLimit [label="Evet"];
+    CheckLimit -> OverLimit [label="Evet"];
+    OverLimit -> End;
+
+    CheckLimit -> Deduct [label="Hayır"];
+    Deduct -> Dispense -> Print -> TakeCash -> AskMore;
+
+    AskMore -> InsertCard [label="Evet"];
+    AskMore -> End [label="Hayır"];
+}
+💡 Açıklama:
+Elmaslar (diamond) karar (koşul) noktalarını temsil eder.
+Dikdörtgenler işlemleri gösterir.
+Oval düğümler başlangıç ve bitişi gösterir.
+“Evet/Hayır” etiketleri koşul sonuçlarını belirtir.
+İstersen aynı grafiği renkli ve daha düzenli (örneğin gruplandırılmış altgraf yapısında) biçimlendirebilirim.
+İster misin o sürümü de oluşturayım?
