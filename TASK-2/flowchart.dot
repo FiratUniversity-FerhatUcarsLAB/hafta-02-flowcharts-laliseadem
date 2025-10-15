@@ -1,0 +1,90 @@
+digraph Online_Alisveris_Sepeti {
+    rankdir=TB;
+    node [shape=rectangle, fontname="Arial", fontsize=11, style=rounded];
+
+    start [label="BAŞLA", shape=circle, style=filled, fillcolor=lightgreen];
+
+    // Kullanıcı girişi veya yeni hesap
+    input_login [label="Kullanıcıdan e-posta ve parola al"];
+    check_user [label="E-posta sistemde kayıtlı mı?"];
+    user_not_found [label="Kullanıcı bulunamadı\nYeni hesap açmak ister misiniz? (E/H)", shape=diamond];
+    create_account [label="YeniHesapOluştur(isim, soyisim, e-posta, parola)\nHesap oluşturuldu"];
+    no_account [label="Giriş yapılmadı, işlem sonlandırıldı"];
+    wrong_pass [label="Parola yanlış\ntekrer deneyin"];
+    login_success [label="Oturum başlat\nkullanıcı_id = GirişYapanKullanıcıID()"];
+
+    // Ürün seçme
+    show_products [label="Ürün listesi göster"];
+    select_product [label="Kullanıcı ürün_id ve miktar seçer"];
+    check_stock [label="Stok yeterli mi?", shape=diamond];
+    no_stock [label="Yeterli stok yok\nİşlem sonlandırıldı"];
+    add_to_cart [label="SepeteEkle veya miktarı güncelle"];
+    product_added [label="Ürün sepete eklendi"];
+
+    // İndirim kodu
+    ask_coupon [label="İndirim kodun var mı?", shape=diamond];
+    enter_coupon [label="Kullanıcı kod girer"];
+    coupon_valid [label="Kupon geçerli mi?", shape=diamond];
+    apply_discount [label="İndirimiHesapla(kod)\nİndirim uygulandı"];
+    invalid_coupon [label="Kod geçersiz veya süresi dolmuş"];
+
+    // Kargo hesaplama
+    enter_address [label="Teslimat adresi al"];
+    list_shipping [label="Kargo yöntemlerini listele"];
+    select_shipping [label="Kullanıcı kargo yöntemi seçer"];
+    calc_shipping [label="KargoTutarı = KargoHesapla(sepet, yöntem)\nKargo ücreti yazdır"];
+
+    // Toplam hesaplama
+    calc_total [label="AraToplam, İndirim, Vergi, GenelToplam hesapla"];
+    show_total [label="Toplam ödenecek tutar yazdır"];
+
+    // Ödeme
+    select_payment [label="Ödeme yöntemi seç"];
+    payment_result [label="ÖdemeSonucu = ÖdemeYap()", shape=diamond];
+    payment_failed [label="Ödeme başarısız\nİşlem sonlandırıldı"];
+    payment_success [label="Ödeme başarılı"];
+
+    // Sipariş oluşturma
+    create_order [label="SiparişOluştur()\nStokAzalt()\nSepetiTemizle()"];
+    order_done [label="Sipariş oluşturuldu\nTeşekkür ederiz!"];
+
+    // Bildirim
+    send_email [label="E-posta ile sipariş özeti gönder"];
+    mark_status [label="Sipariş durumunu 'Hazırlanıyor' yap"];
+
+    end [label="BİTİR", shape=doublecircle, style=filled, fillcolor=lightblue];
+
+    // --- Akış bağlantıları ---
+    start -> input_login -> check_user;
+    check_user -> user_not_found [label="Hayır"];
+    check_user -> wrong_pass [label="Evet, ama parola yanlış"];
+    check_user -> login_success [label="Evet ve parola doğru"];
+
+    user_not_found -> create_account [label="E"];
+    user_not_found -> no_account [label="H"];
+    create_account -> login_success;
+    wrong_pass -> end;
+    no_account -> end;
+
+    login_success -> show_products -> select_product -> check_stock;
+    check_stock -> no_stock [label="Hayır"];
+    check_stock -> add_to_cart [label="Evet"];
+    no_stock -> end;
+    add_to_cart -> product_added -> ask_coupon;
+
+    ask_coupon -> enter_coupon [label="Evet"];
+    ask_coupon -> enter_address [label="Hayır"];
+    enter_coupon -> coupon_valid;
+    coupon_valid -> apply_discount [label="Evet"];
+    coupon_valid -> invalid_coupon [label="Hayır"];
+    apply_discount -> enter_address;
+    invalid_coupon -> enter_address;
+
+    enter_address -> list_shipping -> select_shipping -> calc_shipping -> calc_total -> show_total -> select_payment -> payment_result;
+
+    payment_result -> payment_success [label="Başarılı"];
+    payment_result -> payment_failed [label="Başarısız"];
+    payment_failed -> end;
+
+    payment_success -> create_order -> order_done -> send_email -> mark_status -> end;
+}
