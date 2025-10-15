@@ -1,0 +1,58 @@
+digraph ATM {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontsize=11];
+
+    Start [label="BAŞLA", shape=oval];
+    InsertCard [label="Kart takılır"];
+    PinInit [label="PIN deneme sayısı = 0"];
+    EnterPIN [label="PIN'i kullanıcıdan al"];
+    CheckPIN [label="PIN doğru mu?", shape=diamond];
+    WrongPIN [label="PIN deneme sayısı = PIN deneme sayısı + 1"];
+    ThreeTries [label="PIN deneme sayısı = 3 mü?", shape=diamond];
+    BlockCard [label="Kartı bloke et\nMESAJ: 'Kartınız bloke olmuştur.'"];
+    Balance [label="Bakiye = Hesaptaki bakiye öğren"];
+    ShowBalance [label="MESAJ: 'Bakiyeniz: ' + Bakiye"];
+    EnterAmount [label="Çekilmek istenen tutarı gir"];
+    CheckBalance [label="Tutar > Bakiye ?", shape=diamond];
+    Insufficient [label="MESAJ: 'Yetersiz bakiye'"];
+    CheckMultiple [label="Tutar 20 TL’nin katı mı?", shape=diamond];
+    NotMultiple [label="MESAJ: 'Tutar 20 TL’nin katı olmalı'"];
+    CheckLimit [label="Tutar günlük limitten büyük mü?", shape=diamond];
+    OverLimit [label="MESAJ: 'Günlük limit aşıldı'"];
+    Deduct [label="Bakiye = Bakiye - Tutar"];
+    Dispense [label="Para ver"];
+    Print [label="Fiş yazdır"];
+    TakeCash [label="MESAJ: 'Lütfen paranızı ve kartınızı alınız.'"];
+    AskMore [label="Başka işlem yapmak ister misiniz? (E/H)", shape=diamond];
+    End [label="MESAJ: 'Teşekkürler, iyi günler.'\nBİTİR", shape=oval];
+
+    // Akış bağlantıları
+    Start -> InsertCard -> PinInit -> EnterPIN -> CheckPIN;
+
+    CheckPIN -> Balance [label="Evet"];
+    CheckPIN -> WrongPIN [label="Hayır"];
+
+    WrongPIN -> ThreeTries;
+    ThreeTries -> BlockCard [label="Evet"];
+    ThreeTries -> EnterPIN [label="Hayır"];
+
+    BlockCard -> End;
+
+    Balance -> ShowBalance -> EnterAmount -> CheckBalance;
+    CheckBalance -> Insufficient [label="Evet"];
+    Insufficient -> End;
+
+    CheckBalance -> CheckMultiple [label="Hayır"];
+    CheckMultiple -> NotMultiple [label="Hayır"];
+    NotMultiple -> End;
+
+    CheckMultiple -> CheckLimit [label="Evet"];
+    CheckLimit -> OverLimit [label="Evet"];
+    OverLimit -> End;
+
+    CheckLimit -> Deduct [label="Hayır"];
+    Deduct -> Dispense -> Print -> TakeCash -> AskMore;
+
+    AskMore -> InsertCard [label="Evet"];
+    AskMore -> End [label="Hayır"];
+}
