@@ -1,0 +1,57 @@
+digraph Akilli_Ev_Guvenlik_Sistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontsize=11, fontname="Arial"];
+
+    START [label="BAŞLA", shape=ellipse, style=filled, fillcolor=lightblue];
+    CHECK_SYSTEM [label="Sistem aktif mi?", shape=diamond];
+    SYSTEM_OFF [label="Sistem devre dışı\n(İzleme yapılmaz - bekleme)", shape=box, fillcolor=gray90];
+    INIT [label="Sistem başlatılıyor...", shape=box, fillcolor=lightyellow];
+    LOOP [label="Sensör okuma döngüsü (7/24)", shape=hexagon, fillcolor=lightyellow, style=filled];
+
+    READ_SENSORS [label="Sensör verilerini oku\n(Hareket, Kapı/Pencere, Kamera)"];
+    CHECK_THREAT [label="Tehdit algılandı mı?", shape=diamond];
+    NORMAL [label="Her şey normal\nİzleme devam ediyor", shape=box, fillcolor=lightgreen];
+    OWNER_HOME [label="Ev sahibi evde mi?", shape=diamond];
+    FALSE_ALARM [label="Yanlış alarm\n(Düşük seviye uyarı gönder)", shape=box];
+    DETERMINE_LEVEL [label="Alarm seviyesi belirle\n(1: Düşük, 2: Orta, 3: Yüksek)", shape=box];
+    SEND_ALERTS [label="Bildirim gönder:\nSMS + App + Email", shape=box, fillcolor=lightcoral];
+    WAIT_RECHECK [label="Bekle 10 sn\nSensörleri tekrar kontrol et", shape=box];
+    THREAT_GONE [label="Tehdit ortadan kalktı mı?", shape=diamond];
+    RESET_ALARM [label="Alarm sıfırla", shape=box, fillcolor=lightgreen];
+    CONTINUE_ALARM [label="Tehdit sürüyor\nAlarm aktif kalır", shape=box, fillcolor=orange];
+
+    RECHECK_SYSTEM [label="5 sn sonra tekrar\n'Sistem aktif mi?' kontrolü", shape=box, fillcolor=gray95];
+    END [label="Sistem sürekli izleme durumunda", shape=ellipse, style=filled, fillcolor=lightblue];
+
+    // Bağlantılar
+    START -> CHECK_SYSTEM;
+    CHECK_SYSTEM -> SYSTEM_OFF [label="HAYIR"];
+    CHECK_SYSTEM -> INIT [label="EVET"];
+
+    SYSTEM_OFF -> RECHECK_SYSTEM;
+    RECHECK_SYSTEM -> CHECK_SYSTEM;
+
+    INIT -> LOOP;
+    LOOP -> READ_SENSORS;
+    READ_SENSORS -> CHECK_THREAT;
+
+    CHECK_THREAT -> NORMAL [label="HAYIR"];
+    NORMAL -> READ_SENSORS [label="5 sn sonra"];
+
+    CHECK_THREAT -> OWNER_HOME [label="EVET"];
+    OWNER_HOME -> FALSE_ALARM [label="EVET"];
+    OWNER_HOME -> DETERMINE_LEVEL [label="HAYIR"];
+
+    FALSE_ALARM -> READ_SENSORS [label="5 sn sonra"];
+    DETERMINE_LEVEL -> SEND_ALERTS;
+    SEND_ALERTS -> WAIT_RECHECK;
+    WAIT_RECHECK -> THREAT_GONE;
+
+    THREAT_GONE -> RESET_ALARM [label="EVET"];
+    THREAT_GONE -> CONTINUE_ALARM [label="HAYIR"];
+
+    RESET_ALARM -> READ_SENSORS;
+    CONTINUE_ALARM -> WAIT_RECHECK;
+
+    LOOP -> END [style=dotted];
+}
