@@ -1,0 +1,387 @@
+Akıllı Ev Güvenlik Sistemi
+Sistem Açıklaması
+IoT tabanlı akıllı ev güvenlik sisteminin alarm ve bildirim süreçlerini modelleyin.
+Sistem Gereksinimleri
+Sistem aktif mi kontrolü (koşul)
+Sensör okuma döngüsü (döngü - sürekli)
+Hareket sensörü kontrolü (koşul)
+Kapı/pencere sensörü kontrolü (koşul)
+Kamera aktivasyonu (koşul)
+Yanlış alarm kontrolü (ev sahibi evde mi?) (koşul)
+Alarm seviyesi belirleme (1-düşük, 2-orta, 3-yüksek) (koşul)
+Bildirim gönderme (SMS + App + Email)
+Bekle ve tekrar kontrol et (döngü)
+Alarm sıfırlama veya devam ettirme (koşul)
+Sonsuz Döngü Yaklaşımı
+Akıllı ev güvenlik sistemi 7/24 çalışır. Ana döngü içinde sensör okuma, tehdit algılama, alarm verme ve bildirim gönderme süreçlerini içerir.
+Bu sistem için pseudocode oluştur. Turkçe ile
+
+
+BAŞLA
+
+Sistem_Aktif = DOĞRU
+
+// Sistem 7/24 çalışır
+EĞER Sistem_Aktif = DOĞRU ise
+    YAZ "Akıllı Ev Güvenlik Sistemi başlatılıyor..."
+
+    // Sonsuz döngü
+    TEKRARLA
+        // Sensör verilerini oku
+        Hareket_Sensoru = okuHareketSensoru()
+        Kapi_Pencere_Sensoru = okuKapiPencereSensoru()
+        Kamera = okuKameraDurumu()
+        Ev_Sahibi_Evde = kontrolEvSahibiDurumu()
+
+        // Tehdit kontrolü
+        EĞER Hareket_Sensoru = ALGILANDI ise
+            YAZ "Hareket tespit edildi!"
+            Tehdit = DOĞRU
+        DEĞİLSE EĞER Kapi_Pencere_Sensoru = AÇIK ise
+            YAZ "Kapı veya pencere açıldı!"
+            Tehdit = DOĞRU
+        DEĞİLSE EĞER Kamera = HAREKET_GÖRÜLDÜ ise
+            YAZ "Kamera hareket algıladı!"
+            Tehdit = DOĞRU
+        DEĞİLSE
+            Tehdit = YANLIŞ
+        SON
+
+        // Yanlış alarm kontrolü
+        EĞER Tehdit = DOĞRU ise
+            EĞER Ev_Sahibi_Evde = DOĞRU ise
+                YAZ "Ev sahibi evde, olası yanlış alarm."
+                Alarm_Seviyesi = 1   // düşük seviye
+                Gönder_Bildirim("Olası yanlış alarm - Ev sahibi evde.")
+            DEĞİLSE
+                // Alarm seviyesi belirleme
+                EĞER Kapi_Pencere_Sensoru = AÇIK ise
+                    Alarm_Seviyesi = 3   // yüksek seviye
+                DEĞİLSE EĞER Kamera = HAREKET_GÖRÜLDÜ ise
+                    Alarm_Seviyesi = 2   // orta seviye
+                DEĞİLSE
+                    Alarm_Seviyesi = 1   // düşük seviye
+                SON
+
+                // Alarmı etkinleştir
+                Alarm_Aktif = DOĞRU
+                YAZ "Alarm seviyesi: " + Alarm_Seviyesi
+
+                // Bildirim gönder (SMS + Uygulama + Email)
+                Gönder_SMS("Evde alarm seviyesi: " + Alarm_Seviyesi)
+                Gönder_App_Bildirim("Alarm seviyesi: " + Alarm_Seviyesi)
+                Gönder_Email("Alarm seviyesi: " + Alarm_Seviyesi)
+
+                // Alarm durumu bekle ve tekrar kontrol et
+                BEKLE(10 saniye)
+                Yeni_Durum = okuHareketSensoru()
+
+                EĞER Yeni_Durum = SAKİN ise
+                    YAZ "Tehdit ortadan kalktı, alarm sıfırlandı."
+                    Alarm_Aktif = YANLIŞ
+                DEĞİLSE
+                    YAZ "Tehdit devam ediyor, alarm sürüyor!"
+                    Alarm_Aktif = DOĞRU
+                SON
+            SON
+        DEĞİLSE
+            YAZ "Her şey normal, sistem izleme modunda."
+        SON
+
+        // Tekrar kontrol etmeden önce kısa bekleme
+        BEKLE(5 saniye)
+
+    SONSUZA_KADAR
+DEĞİLSE
+    YAZ "Sistem devre dışı."
+SON
+
+BİTİR
+Açıklama (Kısa)
+
+1. Sistem 7/24 açık kalır ve sensörleri sürekli olarak izler.
+2. Hareket, kapı/pencere veya kamera aktivitesi tehdit olarak değerlendirilir.
+3. Ev sahibi evdeyse sistem düşük seviyeli bildirim gönderir (yanlış alarm olasılığı).
+4. Ev sahibi yoksa alarm seviyesi tehdide göre belirlenir (1–3 arası).
+5. SMS, uygulama bildirimi ve e-posta ile uyarı gönderilir.
+6. Tehdit ortadan kalktığında alarm sıfırlanır ve izleme devam eder.
+---
+İstersen bu pseudocode’u Graphviz DOT diline veya gerçek Python koduna da dönüştürebilirim. Hangisini istersin?
+
+
+Bu pseudocodu DOT diline çevir
+
+
+Elbette!
+Aşağıda verdiğin Akıllı Ev Güvenlik Sistemi pseudocode’unun Graphviz DOT diliyle yazılmış akış diyagramı (flowchart) temsili yer almaktadır.
+Bu, sistemi adım adım görselleştirmek için doğrudan .dot dosyası olarak kullanılabilir.
+
+
+---
+
+🔹 Akıllı Ev Güvenlik Sistemi (Graphviz DOT)
+
+digraph Akilli_Ev_Guvenlik_Sistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontsize=11, fontname="Arial"];
+
+    START [label="BAŞLA", shape=ellipse, style=filled, fillcolor=lightblue];
+    CHECK_SYSTEM [label="Sistem aktif mi?"];
+    SYSTEM_OFF [label="Sistem devre dışı", shape=box];
+    INIT [label="Sensörleri başlat\n(Hareket, Kapı/Pencere, Kamera)"];
+    LOOP [label="Sonsuz Döngü Başla", shape=hexagon, fillcolor=lightyellow, style=filled];
+
+    READ_SENSORS [label="Sensör verilerini oku"];
+    CHECK_MOTION [label="Hareket algılandı mı?", shape=diamond];
+    CHECK_DOOR [label="Kapı/Pencere açık mı?", shape=diamond];
+    CHECK_CAMERA [label="Kamera hareket gördü mü?", shape=diamond];
+    NO_THREAT [label="Tehdit yok\n(Sistem izleme modunda)", shape=box];
+    THREAT [label="Tehdit algılandı", shape=box, fillcolor=lightpink, style=filled];
+
+    CHECK_OWNER [label="Ev sahibi evde mi?", shape=diamond];
+    FALSE_ALARM [label="Yanlış alarm\nDüşük seviye uyarı gönder", shape=box];
+    TRUE_ALARM [label="Gerçek alarm tespit edildi", shape=box, fillcolor=lightcoral, style=filled];
+
+    DETERMINE_LEVEL [label="Alarm seviyesi belirle\n(1-Düşük, 2-Orta, 3-Yüksek)"];
+    SEND_NOTIFICATIONS [label="Bildirim gönder:\nSMS + App + Email"];
+    WAIT_RECHECK [label="Bekle (5-10 sn)\nSensörleri tekrar kontrol et"];
+    THREAT_GONE [label="Tehdit ortadan kalktı mı?", shape=diamond];
+    RESET_ALARM [label="Alarm sıfırla", shape=box, fillcolor=lightgreen, style=filled];
+    CONTINUE_ALARM [label="Tehdit sürüyor\nAlarm aktif kalır", shape=box, fillcolor=orange, style=filled];
+
+    END [label="Sistem 7/24 izleme durumunda", shape=ellipse, style=filled, fillcolor=lightblue];
+
+    // Bağlantılar
+    START -> CHECK_SYSTEM;
+    CHECK_SYSTEM -> SYSTEM_OFF [label="HAYIR"];
+    CHECK_SYSTEM -> INIT [label="EVET"];
+    INIT -> LOOP;
+    LOOP -> READ_SENSORS;
+    READ_SENSORS -> CHECK_MOTION;
+
+    CHECK_MOTION -> CHECK_DOOR [label="HAYIR"];
+    CHECK_MOTION -> THREAT [label="EVET"];
+
+    CHECK_DOOR -> CHECK_CAMERA [label="HAYIR"];
+    CHECK_DOOR -> THREAT [label="EVET"];
+
+    CHECK_CAMERA -> NO_THREAT [label="HAYIR"];
+    CHECK_CAMERA -> THREAT [label="EVET"];
+
+    NO_THREAT -> WAIT_RECHECK;
+    WAIT_RECHECK -> LOOP;
+
+    THREAT -> CHECK_OWNER;
+    CHECK_OWNER -> FALSE_ALARM [label="EVET"];
+    CHECK_OWNER -> TRUE_ALARM [label="HAYIR"];
+
+    FALSE_ALARM -> WAIT_RECHECK;
+    TRUE_ALARM -> DETERMINE_LEVEL;
+    DETERMINE_LEVEL -> SEND_NOTIFICATIONS;
+    SEND_NOTIFICATIONS -> WAIT_RECHECK;
+    WAIT_RECHECK -> THREAT_GONE;
+
+    THREAT_GONE -> RESET_ALARM [label="EVET"];
+    THREAT_GONE -> CONTINUE_ALARM [label="HAYIR"];
+
+    RESET_ALARM -> LOOP;
+    CONTINUE_ALARM -> WAIT_RECHECK;
+
+    SYSTEM_OFF -> END;
+}
+💡 Bu DOT kodunu nasıl kullanabilirsin:1. Yukarıdaki kodu bir .dot dosyasına kaydet (örnek: akilli_ev.dot).
+2. Ardından aşağıdaki komutla diyagram oluşturabilirsin:
+dot -Tpng akilli_ev.dot -o akilli_ev.png
+3. Ortaya çıkan görselde tüm akış (koşullar, döngüler, bildirimler) net biçimde görülür.
+İstersen bu DOT diyagramını görsel hâline (PNG/SVG) dönüştürüp sana direkt çizebilirim.
+
+
+Sistem aktif olmadığında nasıl izleme durumda olur?
+
+
+Çok güzel bir nokta yakaladın 👏
+Evet, sistem aktif değilken “izleme durumunda” olması mantıksal bir hata — bu tür durumlarda sistem aslında pasif olmalı, yani sensör okumayı, alarm ve bildirim süreçlerini durdurmalıdır.
+Şunu ayırt edelim:
+🧠 Doğru Mantık
+Eğer sistem aktif = EVET → sensör döngüsü başlar, tehdit algılanır, bildirim yapılır.
+Eğer sistem aktif = HAYIR → hiçbir sensör okunmaz, alarm süreci çalışmaz, sadece “sistem devre dışı” mesajı gösterilir veya pasif bekleme durumuna geçilir.
+ Düzeltme (DOT mantığında)
+Aşağıdaki değişiklik yapılmalı:
+SYSTEM_OFF düğümü “Sistem devre dışı – izleme yok” şeklinde olmalı.
+SYSTEM_OFF → END bağlantısı yerine sadece bekleme (örneğin 5 saniye) sonrası tekrar “Sistem aktif mi?” kontrolüne dönülmeli.
+DÜZELTİLMİŞ DOT PARÇASI
+
+digraph Akilli_Ev_Guvenlik_Sistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontsize=11, fontname="Arial"];
+
+    START [label="BAŞLA", shape=ellipse, style=filled, fillcolor=lightblue];
+    CHECK_SYSTEM [label="Sistem aktif mi?"];
+    SYSTEM_OFF [label="Sistem devre dışı\n(İzleme yapılmaz - bekleme)", shape=box, fillcolor=gray90];
+    INIT [label="Sensörleri başlat\n(Hareket, Kapı/Pencere, Kamera)"];
+    LOOP [label="Sonsuz Döngü Başla", shape=hexagon, fillcolor=lightyellow, style=filled];
+    READ_SENSORS [label="Sensör verilerini oku"];
+    // ... (diğer düğümler aynı kalır)
+
+    START -> CHECK_SYSTEM;
+    CHECK_SYSTEM -> SYSTEM_OFF [label="HAYIR"];
+    CHECK_SYSTEM -> INIT [label="EVET"];
+    SYSTEM_OFF -> CHECK_SYSTEM [label="5 sn sonra yeniden kontrol et"];
+    INIT -> LOOP;
+}
+💬 Basitçe açıklarsak:Sistem aktif değilse, sensörleri okumaz, tehdit algılamaz.
+Belirli aralıklarla (ör. 5 saniye) sadece “aktif mi?” kontrolü yapılır.
+Aktif hale getirildiğinde, sistem otomatik olarak izleme ve alarm döngüsüne başlar.
+İstersen bu düzeltmeyi tüm DOT diyagramına entegre edilmiş tam sürüm olarak yeniden yazayım — ister misin o şekilde tam düzeltilmiş hâlini atayım?
+
+
+Pseudocodu ve DOT dili tekrar doğru yazarak bana at!!
+
+
+Harika 👍
+Aşağıda Akıllı Ev Güvenlik Sistemi için hem düzeltilmiş Türkçe pseudocode hem de ona tam karşılık gelen doğru Graphviz DOT diyagramı bulunuyor.
+Bu sürümde mantık tamamen tutarlı — sistem aktif değilse hiçbir izleme yapmaz, sadece periyodik olarak sistemin aktifleşmesini bekler.
+ 1. DÜZELTİLMİŞ PSEUDOCODE (Türkçe)
+
+BAŞLA
+
+Sistem_Aktif = DOĞRU   // kullanıcı tarafından ayarlanabilir
+
+TEKRARLA
+    EĞER Sistem_Aktif = DOĞRU ise
+        YAZ "Akıllı Ev Güvenlik Sistemi başlatıldı."
+
+        // Sonsuz izleme döngüsü
+        TEKRARLA
+            // Sensör verilerini oku
+            Hareket_Sensoru = okuHareketSensoru()
+            Kapi_Pencere_Sensoru = okuKapiPencereSensoru()
+            Kamera = okuKameraDurumu()
+            Ev_Sahibi_Evde = kontrolEvSahibiDurumu()
+
+            // Tehdit kontrolü
+            EĞER Hareket_Sensoru = ALGILANDI veya 
+                 Kapi_Pencere_Sensoru = AÇIK veya 
+                 Kamera = HAREKET_GÖRÜLDÜ ise
+                 
+                 Tehdit = DOĞRU
+                 YAZ "Tehdit algılandı!"
+            DEĞİLSE
+                 Tehdit = YANLIŞ
+                 YAZ "Her şey normal, sistem izleme modunda."
+            SON
+
+            // Eğer tehdit varsa kontrol başlar
+            EĞER Tehdit = DOĞRU ise
+                EĞER Ev_Sahibi_Evde = DOĞRU ise
+                    YAZ "Ev sahibi evde, olası yanlış alarm."
+                    Alarm_Seviyesi = 1
+                    Gönder_Bildirim("Olası yanlış alarm - Ev sahibi evde.")
+                DEĞİLSE
+                    // Alarm seviyesi belirleme
+                    EĞER Kapi_Pencere_Sensoru = AÇIK ise
+                        Alarm_Seviyesi = 3
+                    DEĞİLSE EĞER Kamera = HAREKET_GÖRÜLDÜ ise
+                        Alarm_Seviyesi = 2
+                    DEĞİLSE
+                        Alarm_Seviyesi = 1
+                    SON
+
+                    // Alarm ve bildirimler
+                    YAZ "Alarm seviyesi: " + Alarm_Seviyesi
+                    Gönder_SMS("Alarm seviyesi: " + Alarm_Seviyesi)
+                    Gönder_App_Bildirim("Alarm seviyesi: " + Alarm_Seviyesi)
+                    Gönder_Email("Alarm seviyesi: " + Alarm_Seviyesi)
+
+                    // Bekle ve tekrar kontrol et
+                    BEKLE(10 saniye)
+                    Yeni_Durum = okuHareketSensoru()
+
+                    EĞER Yeni_Durum = SAKİN ise
+                        YAZ "Tehdit ortadan kalktı, alarm sıfırlandı."
+                    DEĞİLSE
+                        YAZ "Tehdit devam ediyor, alarm aktif kalıyor."
+                    SON
+                SON
+            SON
+
+            BEKLE(5 saniye)
+        SONSUZA_KADAR
+
+    DEĞİLSE
+        YAZ "Sistem devre dışı. Aktifleştirme bekleniyor..."
+        BEKLE(5 saniye)
+    SON
+
+SONSUZA_KADAR
+BİTİR
+
+
+---
+
+🔹 2. GRAPHVIZ DOT DİLİ (Akış Diyagramı)
+
+digraph Akilli_Ev_Guvenlik_Sistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontsize=11, fontname="Arial"];
+
+    START [label="BAŞLA", shape=ellipse, style=filled, fillcolor=lightblue];
+    CHECK_SYSTEM [label="Sistem aktif mi?", shape=diamond];
+    SYSTEM_OFF [label="Sistem devre dışı\n(İzleme yapılmaz - bekleme)", shape=box, fillcolor=gray90];
+    INIT [label="Sistem başlatılıyor...", shape=box, fillcolor=lightyellow];
+    LOOP [label="Sensör okuma döngüsü (7/24)", shape=hexagon, fillcolor=lightyellow, style=filled];
+
+    READ_SENSORS [label="Sensör verilerini oku\n(Hareket, Kapı/Pencere, Kamera)"];
+    CHECK_THREAT [label="Tehdit algılandı mı?", shape=diamond];
+    NORMAL [label="Her şey normal\nİzleme devam ediyor", shape=box, fillcolor=lightgreen];
+    OWNER_HOME [label="Ev sahibi evde mi?", shape=diamond];
+    FALSE_ALARM [label="Yanlış alarm\n(Düşük seviye uyarı gönder)", shape=box];
+    DETERMINE_LEVEL [label="Alarm seviyesi belirle\n(1: Düşük, 2: Orta, 3: Yüksek)", shape=box];
+    SEND_ALERTS [label="Bildirim gönder:\nSMS + App + Email", shape=box, fillcolor=lightcoral];
+    WAIT_RECHECK [label="Bekle 10 sn\nSensörleri tekrar kontrol et", shape=box];
+    THREAT_GONE [label="Tehdit ortadan kalktı mı?", shape=diamond];
+    RESET_ALARM [label="Alarm sıfırla", shape=box, fillcolor=lightgreen];
+    CONTINUE_ALARM [label="Tehdit sürüyor\nAlarm aktif kalır", shape=box, fillcolor=orange];
+
+    RECHECK_SYSTEM [label="5 sn sonra tekrar\n'Sistem aktif mi?' kontrolü", shape=box, fillcolor=gray95];
+    END [label="Sistem sürekli izleme durumunda", shape=ellipse, style=filled, fillcolor=lightblue];
+
+    // Bağlantılar
+    START -> CHECK_SYSTEM;
+    CHECK_SYSTEM -> SYSTEM_OFF [label="HAYIR"];
+    CHECK_SYSTEM -> INIT [label="EVET"];
+
+    SYSTEM_OFF -> RECHECK_SYSTEM;
+    RECHECK_SYSTEM -> CHECK_SYSTEM;
+
+    INIT -> LOOP;
+    LOOP -> READ_SENSORS;
+    READ_SENSORS -> CHECK_THREAT;
+
+    CHECK_THREAT -> NORMAL [label="HAYIR"];
+    NORMAL -> READ_SENSORS [label="5 sn sonra"];
+
+    CHECK_THREAT -> OWNER_HOME [label="EVET"];
+    OWNER_HOME -> FALSE_ALARM [label="EVET"];
+    OWNER_HOME -> DETERMINE_LEVEL [label="HAYIR"];
+
+    FALSE_ALARM -> READ_SENSORS [label="5 sn sonra"];
+    DETERMINE_LEVEL -> SEND_ALERTS;
+    SEND_ALERTS -> WAIT_RECHECK;
+    WAIT_RECHECK -> THREAT_GONE;
+
+    THREAT_GONE -> RESET_ALARM [label="EVET"];
+    THREAT_GONE -> CONTINUE_ALARM [label="HAYIR"];
+
+    RESET_ALARM -> READ_SENSORS;
+    CONTINUE_ALARM -> WAIT_RECHECK;
+
+    LOOP -> END [style=dotted];
+}
+ Nasıl kullanılır:
+1. DOT kodunu akilli_ev.dot adıyla kaydet.
+2. Terminalde şu komutu çalıştır:
+dot -Tpng akilli_ev.dot -o akilli_ev.png
+3. Ortaya çıkan diyagramda tüm akış (koşullar, döngüler, tehdit kontrolü) görselleştirilmiş olur.
+İstersen bu DOT dosyasını görsel hâline (PNG/SVG) çevrilmiş şekilde senin için oluşturabilirim.
+İster misin diyagramı çizilmiş şekilde göndereyim?
