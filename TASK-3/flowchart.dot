@@ -1,0 +1,81 @@
+digraph HastaneSistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontname="Arial"];
+
+    BASLA [label="BAŞLA"];
+    Kimlik [label="Hasta_TC = kullanıcıdan_TC_no_al"];
+    TC_Kontrol [shape=diamond, label="Hasta_TC geçerli mi?"];
+    TCHata [label="Geçersiz TC!"];
+    TekrarSor [label="Tekrar denemek ister misiniz? (E/H)"];
+    TekrarKontrol [shape=diamond, label="Tekrar = E mi?"];
+
+    IslemSec [label="İşlem seçiniz:\n1-Randevu Al\n2-Tahlil Sonucu Gör"];
+    IslemKontrol [shape=diamond, label="İşlem = 1 mi?"];
+
+    /* --- RANDEVU MODÜLÜ --- */
+    Poliklinik [label="Poliklinik seçimi"];
+    DoktorListesi [label="doktor_listesi = polikliniğe_göre_doktorları_getir"];
+    DoktorSec [label="Doktor seç"];
+    SaatListesi [label="uygun_saatler = doktorun_uygun_saatlerini_getir"];
+    SaatSec [label="Saat seç"];
+    SaatKontrol [shape=diamond, label="Saat uygun mu?"];
+    RandevuOnay [label="randevu_oluştur\nSMS gönder\n'Randevunuz onaylandı'"];
+    SaatTekrar [label="Saat dolu\nYeni saat seç"];
+
+    /* --- TAHLİL MODÜLÜ --- */
+    TahlilKontrol [shape=diamond, label="Tahlil var mı?"];
+    SonucKontrol [shape=diamond, label="Sonuç hazır mı?"];
+    SonucGoster [label="Sonuçları görüntüle"];
+    PDFsor [label="PDF olarak indirilsin mi?"];
+    PDFkontrol [shape=diamond, label="Cevap = E mi?"];
+    PDFindir [label="PDF_oluştur_ve_indir"];
+    Bekleme [label="Sonuç henüz hazır değil"];
+    TahlilYok [label="Kayıtlı tahlil bulunamadı"];
+
+    /* --- DİĞER --- */
+    GecersizSecim [label="Geçersiz seçim"];
+    DevamSor [label="Başka işlem yapmak ister misiniz? (E/H)"];
+    DevamKontrol [shape=diamond, label="Devam = E mi?"];
+    Bitir [label="BİTİR"];
+
+    /* --- BAĞLANTILAR --- */
+    BASLA -> Kimlik -> TC_Kontrol;
+    TC_Kontrol -> IslemSec [label="Evet"];
+    TC_Kontrol -> TCHata [label="Hayır"];
+    TCHata -> TekrarSor -> TekrarKontrol;
+    TekrarKontrol -> Kimlik [label="Evet"];
+    TekrarKontrol -> Bitir [label="Hayır"];
+
+    /* İşlem seçimi */
+    IslemSec -> IslemKontrol;
+
+    /* --- RANDEVU AKIŞI --- */
+    IslemKontrol -> Poliklinik [label="Evet (1)"];
+    Poliklinik -> DoktorListesi -> DoktorSec -> SaatListesi -> SaatSec -> SaatKontrol;
+    SaatKontrol -> RandevuOnay [label="Evet"];
+    SaatKontrol -> SaatTekrar [label="Hayır"];
+    SaatTekrar -> SaatSec;
+    RandevuOnay -> DevamSor;
+
+    /* --- TAHLİL AKIŞI --- */
+    IslemKontrol -> TahlilKontrol [label="Hayır (2)"];
+    TahlilKontrol -> SonucKontrol [label="Evet"];
+    TahlilKontrol -> TahlilYok [label="Hayır"];
+    SonucKontrol -> SonucGoster [label="Evet"];
+    SonucKontrol -> Bekleme [label="Hayır"];
+    SonucGoster -> PDFsor -> PDFkontrol;
+    PDFkontrol -> PDFindir [label="Evet"];
+    PDFkontrol -> DevamSor [label="Hayır"];
+    PDFindir -> DevamSor;
+    Bekleme -> DevamSor;
+    TahlilYok -> DevamSor;
+
+    /* --- Döngü --- */
+    DevamSor -> DevamKontrol;
+    DevamKontrol -> IslemSec [label="Evet"];
+    DevamKontrol -> Bitir [label="Hayır"];
+
+    /* Geçersiz işlem */
+    IslemKontrol -> GecersizSecim [label="Diğer"];
+    GecersizSecim -> DevamSor;
+}
