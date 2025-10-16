@@ -10,7 +10,6 @@ Tekrarla
         tekrar = kullanıcıdan_girdi_al
         Eğer tekrar = "H" ise
             BİTİR
-        Son
 Döngü_son
 
 Tekrarla
