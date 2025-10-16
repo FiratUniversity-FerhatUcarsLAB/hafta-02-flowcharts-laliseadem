@@ -1,0 +1,330 @@
+Hastanede randevu alma ve tahlil sonu¸clarına eri¸sim sistemini modelleyin.
+Sistem Gereksinimleri:
+Hasta kimlik doğrulama (TC No)
+Işlem seçimi: 1-Randevu Al, 2-Tahlil Sonucu Gör (koşul)
+Randevu modülü: Poliklinik seçimi, doktor listesi, uygun saatler(döngü)
+Randevu onayı ve SMS gönderimi
+Tahlil modülü: Tahlil var mı kontrolü (koşul)
+Sonuç hazır mı kontrolü (koşul)
+Sonuç görüntüleme veya bekleme mesajı
+Sonuçları PDF indir seçeneği
+Başka işlem yapmak ister misiniz? (döngü)
+Bu sistem için pseudocod oluştur
+
+
+BAŞLA
+
+Hasta_TC = kullanıcıdan_TC_no_al
+
+Eğer Hasta_TC geçerliyse
+    Tekrarla
+        Yaz "İşlem seçiniz:"
+        Yaz "1 - Randevu Al"
+        Yaz "2 - Tahlil Sonucu Gör"
+        işlem = kullanıcıdan_seçim_al
+
+        Eğer işlem = 1 ise
+            Yaz "Poliklinik seçiniz:"
+            poliklinik = kullanıcıdan_poliklinik_al
+            doktor_listesi = polikliniğe_göre_doktorları_getir
+            Yaz doktor_listesi
+            doktor = kullanıcıdan_doktor_seç
+            uygun_saatler = doktorun_uygun_saatlerini_getir
+            Yaz uygun_saatler
+
+            Tekrarla
+                saat = kullanıcıdan_saat_seç
+                Eğer saat uygun ise
+                    randevu_oluştur(Hasta_TC, doktor, saat)
+                    Yaz "Randevunuz onaylandı."
+                    SMS_gönder(Hasta_TC, randevu_bilgisi)
+                    Çık_döngü
+                Değilse
+                    Yaz "Seçilen saat dolu, lütfen başka bir saat seçin."
+            Döngü_son
+
+        Değilse eğer işlem = 2 ise
+            tahlil_var_mı = tahlil_kontrol(Hasta_TC)
+            Eğer tahlil_var_mı = EVET ise
+                sonuç_hazır_mı = sonuç_kontrol(Hasta_TC)
+                Eğer sonuç_hazır_mı = EVET ise
+                    Yaz "Tahlil Sonuçlarınız:"
+                    sonuçları_görüntüle(Hasta_TC)
+                    Yaz "PDF olarak indirmek ister misiniz? (E/H)"
+                    cevap = kullanıcıdan_girdi_al
+                    Eğer cevap = "E" ise
+                        PDF_oluştur_ve_indir(Hasta_TC)
+                Değilse
+                    Yaz "Tahlil sonuçlarınız henüz hazır değil. Lütfen daha sonra tekrar deneyiniz."
+            Değilse
+                Yaz "Üzerinize kayıtlı tahlil bulunamadı."
+
+        Değilse
+            Yaz "Geçersiz seçim yaptınız."
+
+        Yaz "Başka bir işlem yapmak ister misiniz? (E/H)"
+        devam = kullanıcıdan_girdi_al
+    Döngü devam = "E" olduğu sürece
+Değilse
+    Yaz "Geçersiz TC Kimlik numarası! Giriş başarısız."
+
+BİTİR
+
+
+Bu pseudocodu DOT diline çevir?
+
+
+digraph HastaneSistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontname="Arial"];
+
+    BASLA [label="BAŞLA"];
+    Kimlik [label="Hasta_TC = kullanıcıdan_TC_no_al"];
+    TC_Kontrol [shape=diamond, label="Hasta_TC geçerli mi?"];
+
+    IslemSec [label="İşlem seçiniz:\n1-Randevu Al\n2-Tahlil Sonucu Gör"];
+    IslemKontrol [shape=diamond, label="İşlem = 1 mi?"];
+
+    /* --- RANDEVU MODÜLÜ --- */
+    Poliklinik [label="Poliklinik seçimi"];
+    DoktorListesi [label="doktor_listesi = polikliniğe_göre_doktorları_getir"];
+    DoktorSec [label="Doktor seç"];
+    SaatListesi [label="uygun_saatler = doktorun_uygun_saatlerini_getir"];
+    SaatSec [label="Saat seç"];
+    SaatKontrol [shape=diamond, label="Saat uygun mu?"];
+    RandevuOnay [label="randevu_oluştur\nSMS gönder\n'Randevunuz onaylandı'"];
+    SaatTekrar [label="Yeni saat seç"];
+
+    /* --- TAHLİL MODÜLÜ --- */
+    TahlilKontrol [shape=diamond, label="Tahlil var mı?"];
+    SonucKontrol [shape=diamond, label="Sonuç hazır mı?"];
+    SonucGoster [label="Sonuçları görüntüle"];
+    PDFsor [label="PDF olarak indirilsin mi?"];
+    PDFkontrol [shape=diamond, label="Cevap = E mi?"];
+    PDFindir [label="PDF_oluştur_ve_indir"];
+    Bekleme [label="Sonuç henüz hazır değil"];
+    TahlilYok [label="Kayıtlı tahlil bulunamadı"];
+
+    /* --- DİĞER --- */
+    GecersizSecim [label="Geçersiz seçim"];
+    DevamSor [label="Başka işlem yapmak ister misiniz? (E/H)"];
+    DevamKontrol [shape=diamond, label="Devam = E mi?"];
+    Bitir [label="BİTİR"];
+
+    /* --- BAĞLANTILAR --- */
+    BASLA -> Kimlik -> TC_Kontrol;
+    TC_Kontrol -> IslemSec [label="Evet"];
+    TC_Kontrol -> Bitir [label="Hayır"];
+
+    IslemSec -> IslemKontrol;
+
+    /* Randevu Akışı */
+    IslemKontrol -> Poliklinik [label="Evet (1)"];
+    Poliklinik -> DoktorListesi -> DoktorSec -> SaatListesi -> SaatSec -> SaatKontrol;
+    SaatKontrol -> RandevuOnay [label="Evet"];
+    SaatKontrol -> SaatTekrar [label="Hayır"];
+    RandevuOnay -> DevamSor;
+
+    /* Tahlil Akışı */
+    IslemKontrol -> TahlilKontrol [label="Hayır (2)"];
+    TahlilKontrol -> SonucKontrol [label="Evet"];
+    TahlilKontrol -> TahlilYok [label="Hayır"];
+    SonucKontrol -> SonucGoster [label="Evet"];
+    SonucKontrol -> Bekleme [label="Hayır"];
+    SonucGoster -> PDFsor -> PDFkontrol;
+    PDFkontrol -> PDFindir [label="Evet"];
+    PDFkontrol -> DevamSor [label="Hayır"];
+    PDFindir -> DevamSor;
+    Bekleme -> DevamSor;
+    TahlilYok -> DevamSor;
+
+    /* Döngü Kontrol */
+    DevamSor -> DevamKontrol;
+    DevamKontrol -> IslemSec [label="Evet"];
+    DevamKontrol -> Bitir [label="Hayır"];
+
+    /* Geçersiz İşlem */
+    IslemKontrol -> GecersizSecim [label="Diğer"];
+    GecersizSecim -> DevamSor;
+}
+
+
+Uygun olmayan saat seçtiktikten sonra tekrar saat seç seçeneği dönmesi lazım ve TC geçersiz ise bitirmeden önce 
+TC yanlış olduğunu söyleyip tekrar denemesini teklifi et. Buna göre hem pseudocodu hem de DOT dili yeniden bana at
+
+
+[01:21, 10/16/2025] My Tab: Uygun olmayan saat seçtiktikten sonra tekrar saat seç seçeneği dönmesi lazım ve TC geçersiz ise bitirmeden önce TC yanlış olduğunu söyleyip tekrar denemesini teklifi et. Buna göre hem pseudocodu hem de DOT dili yeniden bana at
+[01:21, 10/16/2025] My Tab: Harika, istediğin değişiklikleri anladım ✅
+Yeni sürümde:
+
+Uygun olmayan saat seçilirse sistem tekrar saat seçmeye dönecek.
+
+TC geçersiz girilirse, kullanıcıya “TC yanlış, tekrar denemek ister misiniz?” seçeneği sunulacak.
+Eğer istemezse sistem sonlanacak.
+
+
+
+---
+
+🧩 Güncellenmiş PSEUDOCODE
+
+BAŞLA
+
+Tekrarla
+    Hasta_TC = kullanıcıdan_TC_no_al
+    Eğer Hasta_TC geçerliyse
+        Çık_döngü
+    Değilse
+        Yaz "Geçersiz TC Kimlik numarası!"
+        Yaz "Tekrar denemek ister misiniz? (E/H)"
+        tekrar = kullanıcıdan_girdi_al
+        Eğer tekrar = "H" ise
+            BİTİR
+        Son
+Döngü_son
+
+Tekrarla
+    Yaz "İşlem seçiniz:"
+    Yaz "1 - Randevu Al"
+    Yaz "2 - Tahlil Sonucu Gör"
+    işlem = kullanıcıdan_seçim_al
+
+    Eğer işlem = 1 ise
+        Yaz "Poliklinik seçiniz:"
+        poliklinik = kullanıcıdan_poliklinik_al
+        doktor_listesi = polikliniğe_göre_doktorları_getir
+        Yaz doktor_listesi
+        doktor = kullanıcıdan_doktor_seç
+        uygun_saatler = doktorun_uygun_saatlerini_getir
+        Yaz uygun_saatler
+
+        Tekrarla
+            saat = kullanıcıdan_saat_seç
+            Eğer saat uygun ise
+                randevu_oluştur(Hasta_TC, doktor, saat)
+                Yaz "Randevunuz onaylandı."
+                SMS_gönder(Hasta_TC, randevu_bilgisi)
+                Çık_döngü
+            Değilse
+                Yaz "Seçilen saat dolu, lütfen başka bir saat seçin."
+        Döngü_son
+
+    Değilse eğer işlem = 2 ise
+        tahlil_var_mı = tahlil_kontrol(Hasta_TC)
+        Eğer tahlil_var_mı = EVET ise
+            sonuç_hazır_mı = sonuç_kontrol(Hasta_TC)
+            Eğer sonuç_hazır_mı = EVET ise
+                Yaz "Tahlil Sonuçlarınız:"
+                sonuçları_görüntüle(Hasta_TC)
+                Yaz "PDF olarak indirmek ister misiniz? (E/H)"
+                cevap = kullanıcıdan_girdi_al
+                Eğer cevap = "E" ise
+                    PDF_oluştur_ve_indir(Hasta_TC)
+            Değilse
+                Yaz "Tahlil sonuçlarınız henüz hazır değil. Lütfen daha sonra tekrar deneyiniz."
+        Değilse
+            Yaz "Üzerinize kayıtlı tahlil bulunamadı."
+
+    Değilse
+        Yaz "Geçersiz seçim yaptınız."
+
+    Yaz "Başka bir işlem yapmak ister misiniz? (E/H)"
+    devam = kullanıcıdan_girdi_al
+Döngü devam = "E" olduğu sürece
+
+BİTİR
+
+
+---
+
+🕸️ Güncellenmiş DOT DİLİ (Graphviz)
+
+digraph HastaneSistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontname="Arial"];
+
+    BASLA [label="BAŞLA"];
+    Kimlik [label="Hasta_TC = kullanıcıdan_TC_no_al"];
+    TC_Kontrol [shape=diamond, label="Hasta_TC geçerli mi?"];
+    TCHata [label="Geçersiz TC!"];
+    TekrarSor [label="Tekrar denemek ister misiniz? (E/H)"];
+    TekrarKontrol [shape=diamond, label="Tekrar = E mi?"];
+
+    IslemSec [label="İşlem seçiniz:\n1-Randevu Al\n2-Tahlil Sonucu Gör"];
+    IslemKontrol [shape=diamond, label="İşlem = 1 mi?"];
+
+    /* --- RANDEVU MODÜLÜ --- */
+    Poliklinik [label="Poliklinik seçimi"];
+    DoktorListesi [label="doktor_listesi = polikliniğe_göre_doktorları_getir"];
+    DoktorSec [label="Doktor seç"];
+    SaatListesi [label="uygun_saatler = doktorun_uygun_saatlerini_getir"];
+    SaatSec [label="Saat seç"];
+    SaatKontrol [shape=diamond, label="Saat uygun mu?"];
+    RandevuOnay [label="randevu_oluştur\nSMS gönder\n'Randevunuz onaylandı'"];
+    SaatTekrar [label="Saat dolu\nYeni saat seç"];
+
+    /* --- TAHLİL MODÜLÜ --- */
+    TahlilKontrol [shape=diamond, label="Tahlil var mı?"];
+    SonucKontrol [shape=diamond, label="Sonuç hazır mı?"];
+    SonucGoster [label="Sonuçları görüntüle"];
+    PDFsor [label="PDF olarak indirilsin mi?"];
+    PDFkontrol [shape=diamond, label="Cevap = E mi?"];
+    PDFindir [label="PDF_oluştur_ve_indir"];
+    Bekleme [label="Sonuç henüz hazır değil"];
+    TahlilYok [label="Kayıtlı tahlil bulunamadı"];
+
+    /* --- DİĞER --- */
+    GecersizSecim [label="Geçersiz seçim"];
+    DevamSor [label="Başka işlem yapmak ister misiniz? (E/H)"];
+    DevamKontrol [shape=diamond, label="Devam = E mi?"];
+    Bitir [label="BİTİR"];
+
+    /* --- BAĞLANTILAR --- */
+    BASLA -> Kimlik -> TC_Kontrol;
+    TC_Kontrol -> IslemSec [label="Evet"];
+    TC_Kontrol -> TCHata [label="Hayır"];
+    TCHata -> TekrarSor -> TekrarKontrol;
+    TekrarKontrol -> Kimlik [label="Evet"];
+    TekrarKontrol -> Bitir [label="Hayır"];
+
+    /* İşlem seçimi */
+    IslemSec -> IslemKontrol;
+
+    /* --- RANDEVU AKIŞI --- */
+    IslemKontrol -> Poliklinik [label="Evet (1)"];
+    Poliklinik -> DoktorListesi -> DoktorSec -> SaatListesi -> SaatSec -> SaatKontrol;
+    SaatKontrol -> RandevuOnay [label="Evet"];
+    SaatKontrol -> SaatTekrar [label="Hayır"];
+    SaatTekrar -> SaatSec;
+    RandevuOnay -> DevamSor;
+
+    /* --- TAHLİL AKIŞI --- */
+    IslemKontrol -> TahlilKontrol [label="Hayır (2)"];
+    TahlilKontrol -> SonucKontrol [label="Evet"];
+    TahlilKontrol -> TahlilYok [label="Hayır"];
+    SonucKontrol -> SonucGoster [label="Evet"];
+    SonucKontrol -> Bekleme [label="Hayır"];
+    SonucGoster -> PDFsor -> PDFkontrol;
+    PDFkontrol -> PDFindir [label="Evet"];
+    PDFkontrol -> DevamSor [label="Hayır"];
+    PDFindir -> DevamSor;
+    Bekleme -> DevamSor;
+    TahlilYok -> DevamSor;
+
+    /* --- Döngü --- */
+    DevamSor -> DevamKontrol;
+    DevamKontrol -> IslemSec [label="Evet"];
+    DevamKontrol -> Bitir [label="Hayır"];
+
+    /* Geçersiz işlem */
+    IslemKontrol -> GecersizSecim [label="Diğer"];
+    GecersizSecim -> DevamSor;
+}
+
+Bu sürümde:
+
+TC hatalıysa kullanıcıya tekrar deneme fırsatı verilir.
+
+Uygun olmayan saat seçildiğinde “Saat dolu” mesajı çıkar ve tekrar “Saat seç” adımına döner.
+
+Akış doğal bir kullanıcı deneyimi sağlar.
