@@ -1,0 +1,129 @@
+Üniversite Ders Kayıt Sistemi
+Sistem Açıklaması:
+Öğrenci ders kayıt sisteminin tüm kontrollerini ve kurallarını modelle
+
+Sistem Gereksinimleri:
+Öğrenci girişi (öğrenci no + şifre)
+Ders listesini görüntüleme (döngü)
+Her ders için:
+Kontenjan kontrolü (koşul)
+Ön koşul dersi kontrolü (koşul)
+Zaman çakışması kontrolü (koşul)
+Kredi limiti kontrolü (toplam ≤ 35) (koşul)
+Ders ekleme/çıkarma (döngü)
+Danışman onayı gerekli mi? (GPA < 2.5 ise) (koşul)
+Kayıt özeti gösterme ve kayıt onaylama
+Bu sistem için pseudocod oluştur
+
+
+BAŞLA
+
+1. ÖğrenciNo ve Şifreyi al
+2. Eğer ÖğrenciNo ve Şifre doğruysa
+       DersListesi <- TümDersleriGöster
+       ToplamKredi <- 0
+       SeçilenDersler <- BoşListe
+
+       TEKRARLA
+            DersSeç <- KullanıcıdanDersSeçimiAl
+            Eğer DersSeç = "Çıkış" ise
+                  ÇIKIŞ YAP
+            Eğer Kontenjan(DersSeç) doluysa
+                  Yazdır "Kontenjan dolu, başka ders seçiniz"
+                  DEVAM ET
+            Eğer ÖnKoşulSağlanmadı(DersSeç) ise
+                  Yazdır "Ön koşul dersi tamamlanmamış"
+                  DEVAM ET
+            Eğer ZamanÇakışmasıVar(DersSeç, SeçilenDersler) ise
+                  Yazdır "Zaman çakışması var, başka ders seçiniz"
+                  DEVAM ET
+            Eğer (ToplamKredi + Kredi(DersSeç)) > 35 ise
+                  Yazdır "Kredi limiti aşıldı"
+                  DEVAM ET
+            Aksi halde
+                  DersEkle(SeçilenDersler, DersSeç)
+                  ToplamKredi <- ToplamKredi + Kredi(DersSeç)
+                  Yazdır "Ders başarıyla eklendi"
+
+            Kullanıcıya "Başka ders eklemek istiyor musunuz?" sor
+       DÖNGÜ SONU (cevap = "Hayır" olana kadar)
+
+       Eğer GPA < 2.5 ise
+             Yazdır "Danışman onayı gerekiyor"
+             DanışmanOnayı <- Al
+             Eğer DanışmanOnayı = "Red" ise
+                    Yazdır "Kayıt tamamlanamadı"
+                    BİTİR
+       KayıtÖzetiGöster(SeçilenDersler, ToplamKredi)
+       Yazdır "Kayıt başarıyla tamamlandı"
+
+Aksi halde
+       Yazdır "Geçersiz öğrenci no veya şifre, tekrar deneyiniz"
+
+BİTİR
+
+
+Bu pseudocodu DOT diline çevir?
+
+
+digraph UniversiteDersKayitSistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontname="Arial"];
+
+    start [label="BAŞLA"];
+    login [label="ÖğrenciNo ve Şifreyi al"];
+    check_login [shape=diamond, label="ÖğrenciNo ve Şifre doğru mu?"];
+    show_courses [label="Tüm Dersleri Göster\nToplamKredi = 0\nSeçilenDersler = BoşListe"];
+    select_course [label="Kullanıcıdan Ders Seçimi Al"];
+    exit_check [shape=diamond, label="DersSeç = 'Çıkış' mı?"];
+    full_check [shape=diamond, label="Kontenjan dolu mu?"];
+    prereq_check [shape=diamond, label="Ön koşul sağlanmadı mı?"];
+    conflict_check [shape=diamond, label="Zaman çakışması var mı?"];
+    credit_check [shape=diamond, label="ToplamKredi + Kredi > 35 mi?"];
+    add_course [label="DersEkle\nToplamKredi = ToplamKredi + Kredi(DersSeç)"];
+    add_success [label="Ders başarıyla eklendi"];
+    repeat_choice [shape=diamond, label="Başka ders eklemek istiyor musunuz?"];
+    gpa_check [shape=diamond, label="GPA < 2.5 mi?"];
+    advisor_approval [label="Danışman onayı al"];
+    advisor_decline [shape=diamond, label="Danışman onayı = 'Red' mi?"];
+    show_summary [label="Kayıt özetini göster"];
+    success [label="Kayıt başarıyla tamamlandı"];
+    invalid_login [label="Geçersiz öğrenci no veya şifre"];
+    end [label="BİTİR"];
+
+    start -> login -> check_login;
+    check_login -> show_courses [label="Evet"];
+    check_login -> invalid_login [label="Hayır"];
+    invalid_login -> end;
+
+    show_courses -> select_course;
+    select_course -> exit_check;
+    exit_check -> end [label="Evet"];
+    exit_check -> full_check [label="Hayır"];
+
+    full_check -> select_course [label="Evet\n(Kontenjan dolu)"];
+    full_check -> prereq_check [label="Hayır"];
+
+    prereq_check -> select_course [label="Evet\n(Ön koşul yok)"];
+    prereq_check -> conflict_check [label="Hayır"];
+
+    conflict_check -> select_course [label="Evet\n(Çakışma var)"];
+    conflict_check -> credit_check [label="Hayır"];
+
+    credit_check -> select_course [label="Evet\n(Kredi limiti aşıldı)"];
+    credit_check -> add_course [label="Hayır"];
+
+    add_course -> add_success -> repeat_choice;
+    repeat_choice -> select_course [label="Evet"];
+    repeat_choice -> gpa_check [label="Hayır"];
+
+    gpa_check -> advisor_approval [label="Evet"];
+    gpa_check -> show_summary [label="Hayır"];
+
+    advisor_approval -> advisor_decline;
+    advisor_decline -> end [label="Evet\n(Onay reddedildi)"];
+    advisor_decline -> show_summary [label="Hayır\n(Onay alındı)"];
+
+    show_summary -> success -> end;
+}
+
